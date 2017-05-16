@@ -39,10 +39,9 @@ sfrgrid = np.linspace(0,3,10)
 sfrgrid = 10.**sfrgrid
 
 
-
 #DEBUG
 '''
-column_density = np.array([100])
+column_density = np.array([100])*u.Msun/u.pc**2
 nhgrid = np.array([100])
 sfrgrid = np.array([30])
 metalgrid = np.array([1])
@@ -83,19 +82,25 @@ nsfr = len(sfrgrid)
 
 obj_list = MultiDimList((nmetals,ncolumns,ndens,nsfr))
 CO_lines_list = MultiDimList((nmetals,ncolumns,ndens,nsfr,10))
+CI_lines_list = MultiDimList((nmetals,ncolumns,ndens,nsfr,2))
 CII_lines_list = MultiDimList((nmetals,ncolumns,ndens,nsfr))
+H2_abu_list = MultiDimList((nmetals,ncolumns,ndens,nsfr))
+HI_abu_list = MultiDimList((nmetals,ncolumns,ndens,nsfr))
 
 CO_lines_array = np.zeros([nmetals,ncolumns,ndens,nsfr,10])
+CI_lines_array = np.zeros([nmetals,ncolumns,ndens,nsfr,2])
 CII_lines_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
+H2_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
+HI_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
 
 CO_intTB_array = np.zeros([nmetals,ncolumns,ndens,nsfr,10])
+CI_intTB_array = np.zeros([nmetals,ncolumns,ndens,nsfr,2])
 CII_intTB_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
 
 
 
 #convert the column densities to CGS
-column_density_cgs = (column_density/constants.m_p).cgs
-
+column_density_cgs = (column_density/(constants.m_p)).cgs
 
 for nm in range(len(metalgrid)):
     for nc in range(ncolumns):
@@ -103,6 +108,9 @@ for nm in range(len(metalgrid)):
             for nsf in range(nsfr):
                 
                 
+                print '============================='
+                print (nm,nc,nd,nsf)
+                print '============================='
                 
 
 
@@ -120,6 +128,7 @@ for nm in range(len(metalgrid)):
                 gmc.sigmaDISRF = 3.0e-22  * metalgrid[nm]       # Cross section to ISRF photons, cm^2 H^-1
                 gmc.Zdust      = 1.0  * metalgrid[nm]       # Dust abundance relative to solar
                 gmc.alphaGD	   = 3.2e-34 * metalgrid[nm]	     # Dust-gas coupling coefficient, erg cm^3 K^-3/2
+                gmc.beta   = 2.0							# Dust spectral index
                 
                 
                 gmc.dust.sigma10 = 2.0e-26  * metalgrid[nm]
@@ -127,6 +136,7 @@ for nm in range(len(metalgrid)):
                 gmc.dust.sigmaISRF = 3.0e-22  * metalgrid[nm]
                 gmc.dust.Zd = 1.0  * metalgrid[nm]
                 gmc.dust.alphaGD =  3.2e-34 * metalgrid[nm]
+                gmc.dust.beta =  2.0
             
             
                 #initalise the emitter abundances
@@ -137,7 +147,7 @@ for nm in range(len(metalgrid)):
                 gmc.addEmitter('co',1.e-100)
                 
                 #you'll probably want to play with this to make it dynamically
-                #depend on the redshift of the slice
+                #depend on the redshift of the slice [gmc.Tcmb = 2.73*(1+z)]
                 gmc.Tcmb = 2.73
                 
 
@@ -168,8 +178,10 @@ for nm in range(len(metalgrid)):
                 #densities
                 
                 gamma = 1.4
-                cs = np.sqrt(gamma*constants.k_B/constants.m_p*10.*u.K) #assuming temp of 10K
-                sigma_vir = 10.*u.km/u.s# picking an abitrariy value
+                mu = 2.33
+                cs = np.sqrt(gamma*constants.k_B/mu/constants.m_p*10.*u.K) #assuming temp of 10K
+                alpha_vir = 1.0 # arbitrary value, assuming cloud is virialized
+                sigma_vir = np.sqrt(4.0/15.0*np.pi*alpha_vir*constants.G*mu*constants.m_p*column_density_cgs[nc]**2/(nhgrid[nd]/u.cm**3))# assuming spherical cloud
                 mach = sigma_vir.cgs/cs.cgs
                 sigma_p_sq = np.log(1.+ 3.*mach**2./4)
                 turbulent_compression_factor =np.exp(sigma_p_sq/2.)
@@ -186,8 +198,9 @@ for nm in range(len(metalgrid)):
                 gmc.rad.ionRate = 1.e-17*SFR 
                 gmc.chi = 1.*SFR 
                 gmc.rad.chi = 1*SFR
-        
-                gmc.sigmaNT = np.repeat(1.e5,NZONES)
+       
+                sigmaNT = (np.sqrt(sigma_vir**2-cs**2)).cgs.value
+                gmc.sigmaNT = np.repeat(sigmaNT,NZONES)
                 #================================================================
                 
                 
@@ -199,27 +212,28 @@ for nm in range(len(metalgrid)):
                 #temperature all at once.
                 try:
                     gmc.setChemEq(network=NL99_GC, evolveTemp = 'iterate', verbose=True)
+                    gmc.lineLum('co')[0]['lumPerH']
                 except (despotic.despoticError,ValueError,np.linalg.linalg.LinAlgError):
                     gmc = copy.deepcopy(gmc_old)
 
                 gmc_old = copy.deepcopy(gmc)
                                 
                 #calculate the CO and C+ lines since we really don't want to have to do that later
-                #CO_lines = np.array([gmc.lineLum('co')[r]['lumPerH'] for r in range(10)])
-                #CII_lines =  gmc.lineLum('c+')[0]['lumPerH']
-                
                 CO_lines_array[nm,nc,nd,nsf,:] = np.array([gmc.lineLum('co')[r]['lumPerH'] for r in range(10)])
+                CI_lines_array[nm,nc,nd,nsf,:] = np.array([gmc.lineLum('c')[r]['lumPerH'] for r in range(2)])
                 CII_lines_array[nm,nc,nd,nsf] =  gmc.lineLum('c+')[0]['lumPerH']
 
                 CO_intTB_array[nm,nc,nd,nsf,:] = np.array([gmc.lineLum('co')[r]['intTB'] for r in range(10)])
+                CI_intTB_array[nm,nc,nd,nsf,:] = np.array([gmc.lineLum('c')[r]['intTB'] for r in range(2)])
                 CII_intTB_array[nm,nc,nd,nsf] =  gmc.lineLum('c+')[0]['intTB']
                   
+                H2_abu_array[nm,nc,nd,nsf] = gmc.chemabundances_zone[-1]['H2']
+                HI_abu_array[nm,nc,nd,nsf] = gmc.chemabundances_zone[-1]['H']
 
                 #for i in range(10): CO_lines_list.set((nm,nc,nd,nsf,i),CO_lines[i])
                 #CII_lines_list.set((nm,nc,nd,nsf),CII_lines)
                 obj_list.set((nm,nc,nd,nsf),gmc) #DEBUG
-                
-np.savez('high_res.npz',column_density = column_density.value,metalgrid = metalgrid,nhgrid = nhgrid,sfrgrid = sfrgrid, CO_lines_array = CO_lines_array,CII_lines_array = CII_lines_array,CO_intTB_array = CO_intTB_array,CII_intTB_array=CII_intTB_array)
+np.savez('high_res.npz',column_density = column_density.value,metalgrid = metalgrid,nhgrid = nhgrid,sfrgrid = sfrgrid, CO_lines_array = CO_lines_array, CI_lines_array = CI_lines_array, CII_lines_array = CII_lines_array,CO_intTB_array = CO_intTB_array, CI_intTB_array = CI_intTB_array, CII_intTB_array=CII_intTB_array, H2_abu_array = H2_abu_array, HI_abu_array = HI_abu_array)
 '''
 filehandler = open("junk.obj","wb")
 pickle.dump(obj_list,filehandler)

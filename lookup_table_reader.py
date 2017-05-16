@@ -32,21 +32,84 @@ class MultiDimList(object):
     def __repr__(self):
         return repr(self.L)
 
-def interpolator(coords, data, point) :
-#from this guy: http://stackoverflow.com/questions/14119892/python-4d-linear-interpolation-on-a-rectangular-grid
-    dims = len(point)
-    indices = []
-    sub_coords = []
-    for j in xrange(dims) :
-        idx = np.digitize([point[j]], coords[j])[0]
-        indices += [[idx - 1, idx]]
-        sub_coords += [coords[j][indices[-1]]]
-    indices = np.array([j for j in product(*indices)])
-    sub_coords = np.array([j for j in product(*sub_coords)])
-    sub_data = data[list(np.swapaxes(indices, 0, 1))]
-    li = LinearNDInterpolator(sub_coords, sub_data)
-    return li([point])[0]
 
+def interpolator(coords, data, point) : 
+#from this guy: http://stackoverflow.com/questions/14119892/python-4d-linear-interpolation-on-a-rectangular-grid
+	dims = len(point)
+	indices = []
+	sub_coords = []
+	for j in xrange(dims) :
+		idx = np.digitize([point[j]], coords[j])[0]
+		indices += [[idx - 1, idx]]
+	sub_coords += [coords[j][indices[-1]]]
+	indices = np.array([j for j in product(*indices)])
+	sub_coords = np.array([j for j in product(*sub_coords)])
+	sub_data = data[list(np.swapaxes(indices, 0, 1))]
+	li = LinearNDInterpolator(sub_coords, sub_data)
+	return li([point])[0]
+
+
+def interpolator_qlinear(coords, data, point):
+# vectorized 4-D quadrilinear interpolation over structured grid
+	
+	# load the structured grid
+	par1 = point[0]
+	par10 = coords[0]
+	dpar1 = par10[1]-par10[0]
+	par2 = point[1]
+	par20 = coords[1]
+	dpar2 = par20[1]-par20[0]
+	par3 = point[2]
+	par30 = coords[2]
+	dpar3 = par30[1]-par30[0]
+	par4 = point[3]
+	par40 = coords[3]
+	dpar4 = par40[1]-par40[0]
+	
+	varshape = par1.shape
+	value21 = np.zeros(varshape)
+	value20 = np.zeros(varshape)
+	value31 = np.zeros(varshape)
+	value30 = np.zeros(varshape)
+	value41 = np.zeros(varshape)
+	value40 = np.zeros(varshape)
+
+	# locate points 
+	index_par1max = len(par10)-2
+	index_par2max = len(par20)-2
+	index_par3max = len(par30)-2
+	index_par4max = len(par40)-2
+	index1 = np.fmin(index_par1max,np.fmax(0,((par1-par10[0])/dpar1).astype(np.int,copy=False)))
+	index2 = np.fmin(index_par2max,np.fmax(0,((par2-par20[0])/dpar2).astype(np.int,copy=False)))
+	index3 = np.fmin(index_par3max,np.fmax(0,((par3-par30[0])/dpar3).astype(np.int,copy=False)))
+	index4 = np.fmin(index_par4max,np.fmax(0,((par4-par40[0])/dpar4).astype(np.int,copy=False)))
+	
+	#interpolation 
+	for p in [1,2]:
+		for q in [1,2]:
+			for w in [1,2]:
+				# over par4
+				slope = (data[p+index1-1,q+index2-1,w+index3-1,index4+1]-data[p+index1-1,q+index2-1,w+index3-1,index4])/dpar4
+				if w == 1:
+					value40 = (par4-par40[index4])*slope+data[p+index1-1,q+index2-1,w+index3-1,index4]
+				elif w == 2:
+					value41 = (par4-par40[index4])*slope+data[p+index1-1,q+index2-1,w+index3-1,index4]
+			# over par3
+			slope = (value41-value40)/dpar3
+			if q == 1:
+				value30 = (par3-par30[index3])*slope+value40
+			if q == 2:
+				value31 = (par3-par30[index3])*slope+value40
+		# over par2
+		slope = (value31-value30)/dpar2
+		if p == 1:
+			value20 = (par2-par20[index2])*slope+value30
+		if p == 2:
+			value21 = (par2-par20[index2])*slope+value30
+	# over par1
+	slope = (value21-value20)/dpar1
+	value = (par1-par10[index1])*slope+value20
+	return value
 
 
 
@@ -65,15 +128,23 @@ def get_co(picklename,npzname,column_points,metal_points,nh_points,sfr_points,in
 
     if intensity == False:
         CO_lines_array = data['CO_lines_array']
+        CI_lines_array = data['CI_lines_array']
         CII_lines_array = data['CII_lines_array']
     else:
         CO_lines_array = data['CO_intTB_array']
+        CI_lines_array = data['CI_intTB_array']
         CII_lines_array = data['CII_intTB_array']
+	
+    HI_abu_array = data['HI_abu_array']
+    H2_abu_array = data['H2_abu_array']
 
 
     #mask out infs and nans
     CO_lines_array = np.nan_to_num(CO_lines_array)
+    CI_lines_array = np.nan_to_num(CI_lines_array)
     CII_lines_array = np.nan_to_num(CII_lines_array)
+    H2_abu_array = np.nan_to_num(H2_abu_array)
+    HI_abu_array = np.nan_to_num(HI_abu_array)
 
     #floor and ceiling all the sph particle points
     w_column_min = np.where(column_points < np.min(column_density))[0]
@@ -93,17 +164,20 @@ def get_co(picklename,npzname,column_points,metal_points,nh_points,sfr_points,in
     if len(w_nh_max) > 0: nh_points[w_nh_max] = np.max(nhgrid)*0.9
     if len(w_sfr_min) > 0: sfr_points[w_sfr_min] = np.min(sfrgrid)*1.1
     if len(w_sfr_max) > 0: sfr_points[w_sfr-max] = np.max(sfrgrid)*0.9
-                                                                 
+                                                                
     interpolated_co_lines_array = np.zeros([len(column_points),10])
-    for i in range(len(column_points)):
+    interpolated_ci_lines_array = np.zeros([len(column_points),2])
+    interpolated_cii_lines_array = np.zeros([len(column_points)])
+    interpolated_h2_abu_array = np.zeros([len(column_points)])
+    interpolated_hi_abu_array = np.zeros([len(column_points)])
         
-        
-        #point = np.array([column_points[i],metal_points[i],nh_points[i],sfr_points[i]])
-        #interpolated_co_lines = interpolator((column_density,metalgrid,nhgrid,sfrgrid),CO_lines_array,point)
+    point = (metal_points,np.log10(column_points),np.log10(nh_points),np.log10(sfr_points))
+    coords = (metalgrid,np.log10(column_density),np.log10(nhgrid),np.log10(sfrgrid))
 
-        point = np.array([metal_points[i],column_points[i],nh_points[i],sfr_points[i]])
-        interpolated_co_lines = interpolator((metalgrid,column_density,nhgrid,sfrgrid),CO_lines_array,point)
-        interpolated_co_lines_array[i,:] = interpolated_co_lines
+    interpolated_co_lines_array = np.array([interpolator_qlinear(coords,CO_lines_array[:,:,:,:,r],point) for r in range(10)])
+    interpolated_ci_lines_array = np.array([interpolator_qlinear(coords,CI_lines_array[:,:,:,:,r],point) for r in range(2)])
+    interpolated_cii_lines_array = interpolator_qlinear(coords,CII_lines_array,point)
+    interpolated_h2_abu_array = interpolator_qlinear(coords,H2_abu_array,point)
+    interpolated_hi_abu_array = interpolator_qlinear(coords,HI_abu_array,point)
 
-    return interpolated_co_lines_array
-
+    return interpolated_co_lines_array,interpolated_ci_lines_array,interpolated_cii_lines_array,interpolated_h2_abu_array,interpolated_hi_abu_array
