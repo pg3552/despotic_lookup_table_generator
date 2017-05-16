@@ -163,7 +163,7 @@ def get_co(picklename,npzname,column_points,metal_points,nh_points,sfr_points,in
     if len(w_nh_min) > 0: nh_points[w_nh_min] = np.min(nhgrid)*1.1
     if len(w_nh_max) > 0: nh_points[w_nh_max] = np.max(nhgrid)*0.9
     if len(w_sfr_min) > 0: sfr_points[w_sfr_min] = np.min(sfrgrid)*1.1
-    if len(w_sfr_max) > 0: sfr_points[w_sfr-max] = np.max(sfrgrid)*0.9
+    if len(w_sfr_max) > 0: sfr_points[w_sfr_max] = np.max(sfrgrid)*0.9
                                                                 
     interpolated_co_lines_array = np.zeros([len(column_points),10])
     interpolated_ci_lines_array = np.zeros([len(column_points),2])
