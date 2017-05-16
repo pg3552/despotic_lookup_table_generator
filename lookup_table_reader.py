@@ -41,7 +41,7 @@ def interpolator(coords, data, point) :
 	for j in xrange(dims) :
 		idx = np.digitize([point[j]], coords[j])[0]
 		indices += [[idx - 1, idx]]
-	sub_coords += [coords[j][indices[-1]]]
+                sub_coords += [coords[j][indices[-1]]]
 	indices = np.array([j for j in product(*indices)])
 	sub_coords = np.array([j for j in product(*sub_coords)])
 	sub_data = data[list(np.swapaxes(indices, 0, 1))]
@@ -117,8 +117,8 @@ def get_co(picklename,npzname,column_points,metal_points,nh_points,sfr_points,in
 
 
 
-    with open(picklename,"rb") as f:
-        obj_list = pickle.load(f)
+    #with open(picklename,"rb") as f:
+    #    obj_list = pickle.load(f)
     
     data = np.load(npzname)
     column_density = data['column_density']
