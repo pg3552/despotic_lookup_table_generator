@@ -100,9 +100,10 @@ CII_intTB_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
 
 
 #convert the column densities to CGS
-column_density_cgs = (column_density/(constants.m_p)).cgs
+mu = 2.33
+column_density_cgs = (column_density/(mu*constants.m_p)).cgs
 
-for nm in range(len(metalgrid)):
+for nm in range(nmetals):
     for nc in range(ncolumns):
         for nd in range(ndens):
             for nsf in range(nsfr):
@@ -178,19 +179,17 @@ for nm in range(len(metalgrid)):
                 #densities
                 
                 gamma = 1.4
-                mu = 2.33
                 cs = np.sqrt(gamma*constants.k_B/mu/constants.m_p*10.*u.K) #assuming temp of 10K
                 alpha_vir = 1.0 # arbitrary value, assuming cloud is virialized
                 sigma_vir = np.sqrt(4.0/15.0*np.pi*alpha_vir*constants.G*mu*constants.m_p*column_density_cgs[nc]**2/(nhgrid[nd]/u.cm**3))# assuming spherical cloud
-                mach = sigma_vir.cgs/cs.cgs
-                sigma_p_sq = np.log(1.+ 3.*mach**2./4)
-                turbulent_compression_factor =np.exp(sigma_p_sq/2.)
+                sigma_vir = max(cs,sigma_vir)
+                sigmaNT = np.sqrt(sigma_vir**2-cs**2)
                 
 
                 #assign other properties of clouds
                 
-                SFR = sfrgrid[nsf] #DEBUG
-                gmc.nH = nhgrid[nd]*turbulent_compression_factor.value 
+                SFR = sfrgrid[nsf]
+                gmc.nH = nhgrid[nd] 
                 gmc.Td = 10
                 gmc.Tg = 10
                 gmc.rad.TradDust = 10
@@ -199,8 +198,7 @@ for nm in range(len(metalgrid)):
                 gmc.chi = 1.*SFR 
                 gmc.rad.chi = 1*SFR
        
-                sigmaNT = (np.sqrt(sigma_vir**2-cs**2)).cgs.value
-                gmc.sigmaNT = np.repeat(sigmaNT,NZONES)
+                gmc.sigmaNT = np.repeat(sigmaNT.cgs.value,NZONES)
                 #================================================================
                 
                 
@@ -227,8 +225,8 @@ for nm in range(len(metalgrid)):
                 CI_intTB_array[nm,nc,nd,nsf,:] = np.array([gmc.lineLum('c')[r]['intTB'] for r in range(2)])
                 CII_intTB_array[nm,nc,nd,nsf] =  gmc.lineLum('c+')[0]['intTB']
                   
-                H2_abu_array[nm,nc,nd,nsf] = gmc.chemabundances_zone[-1]['H2']
-                HI_abu_array[nm,nc,nd,nsf] = gmc.chemabundances_zone[-1]['H']
+                H2_abu_array[nm,nc,nd,nsf] = np.average(np.array([gmc.chemabundances_zone[n]['H2'] for n in range(NZONES)]),weights=gmc.mass())
+                HI_abu_array[nm,nc,nd,nsf] = np.average(np.array([gmc.chemabundances_zone[n]['H'] for n in range(NZONES)]),weights=gmc.mass())
 
                 #for i in range(10): CO_lines_list.set((nm,nc,nd,nsf,i),CO_lines[i])
                 #CII_lines_list.set((nm,nc,nd,nsf),CII_lines)
