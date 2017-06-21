@@ -236,9 +236,9 @@ np.savez('high_res.npz',column_density = column_density.value,metalgrid = metalg
 filehandler = open("junk.obj","wb")
 pickle.dump(obj_list,filehandler)
 filehandler.close()
-'''
+
 data = [obj_list,CO_lines_list]
 with open("high_res.obj","wb") as f:
     pickle.dump((obj_list),f)
 
-
+'''

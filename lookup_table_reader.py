@@ -113,7 +113,7 @@ def interpolator_qlinear(coords, data, point):
 
 
 
-def get_co(picklename,npzname,column_points,metal_points,nh_points,sfr_points,intensity=False):
+def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=False):
 
 
 
