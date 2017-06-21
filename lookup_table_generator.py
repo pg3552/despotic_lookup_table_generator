@@ -26,9 +26,9 @@ column_density = np.linspace(0,3,10)
 column_density = 10.**(column_density)*u.Msun/u.pc**2
 
 #set number of radial zones in each cloud
-NZONES = 16
+NZONES = 4
 
-metalgrid = np.linspace(1.5,0.1,10) #set up the metallicities 
+metalgrid = np.linspace(1.5,0.1,3) #set up the metallicities 
 
 #set the nH grid
 nhgrid = np.linspace(0.1,3,10)
@@ -211,7 +211,7 @@ for nm in range(nmetals):
                 try:
                     gmc.setChemEq(network=NL99_GC, evolveTemp = 'iterate', verbose=True)
                     gmc.lineLum('co')[0]['lumPerH']
-                except (despotic.despoticError,ValueError,np.linalg.linalg.LinAlgError):
+                except (despotic.despoticError,ValueError,np.linalg.linalg.LinAlgError,IndexError):
                     gmc = copy.deepcopy(gmc_old)
 
                 gmc_old = copy.deepcopy(gmc)
