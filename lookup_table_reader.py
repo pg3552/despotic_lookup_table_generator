@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 import scipy
-import ipdb,pdb
+#import ipdb,pdb
 
 from scipy.interpolate import LinearNDInterpolator
 from itertools import product
@@ -55,16 +55,12 @@ def interpolator_qlinear(coords, data, point):
 	# load the structured grid
 	par1 = point[0]
 	par10 = coords[0]
-	dpar1 = par10[1]-par10[0]
 	par2 = point[1]
 	par20 = coords[1]
-	dpar2 = par20[1]-par20[0]
 	par3 = point[2]
 	par30 = coords[2]
-	dpar3 = par30[1]-par30[0]
 	par4 = point[3]
 	par40 = coords[3]
-	dpar4 = par40[1]-par40[0]
 	
 	varshape = par1.shape
 	value21 = np.zeros(varshape)
@@ -79,105 +75,117 @@ def interpolator_qlinear(coords, data, point):
 	index_par2max = len(par20)-2
 	index_par3max = len(par30)-2
 	index_par4max = len(par40)-2
-	index1 = np.fmin(index_par1max,np.fmax(0,((par1-par10[0])/dpar1).astype(np.int,copy=False)))
-	index2 = np.fmin(index_par2max,np.fmax(0,((par2-par20[0])/dpar2).astype(np.int,copy=False)))
-	index3 = np.fmin(index_par3max,np.fmax(0,((par3-par30[0])/dpar3).astype(np.int,copy=False)))
-	index4 = np.fmin(index_par4max,np.fmax(0,((par4-par40[0])/dpar4).astype(np.int,copy=False)))
+	index1 = np.fmin(index_par1max,np.fmax(0,np.digitize(par1,par10)-1))
+	index2 = np.fmin(index_par2max,np.fmax(0,np.digitize(par2,par20)-1))
+	index3 = np.fmin(index_par3max,np.fmax(0,np.digitize(par3,par30)-1))
+	index4 = np.fmin(index_par4max,np.fmax(0,np.digitize(par4,par40)-1))
 	
 	#interpolation 
 	for p in [1,2]:
 		for q in [1,2]:
 			for w in [1,2]:
 				# over par4
-				slope = (data[p+index1-1,q+index2-1,w+index3-1,index4+1]-data[p+index1-1,q+index2-1,w+index3-1,index4])/dpar4
+				slope = (data[p+index1-1,q+index2-1,w+index3-1,index4+1]-data[p+index1-1,q+index2-1,w+index3-1,index4])/(par40[index4+1]-par40[index4])
 				if w == 1:
 					value40 = (par4-par40[index4])*slope+data[p+index1-1,q+index2-1,w+index3-1,index4]
-				elif w == 2:
+				else:
 					value41 = (par4-par40[index4])*slope+data[p+index1-1,q+index2-1,w+index3-1,index4]
 			# over par3
-			slope = (value41-value40)/dpar3
+			slope = (value41-value40)/(par30[index3+1]-par30[index3])
 			if q == 1:
 				value30 = (par3-par30[index3])*slope+value40
-			if q == 2:
+			else:
 				value31 = (par3-par30[index3])*slope+value40
 		# over par2
-		slope = (value31-value30)/dpar2
+		slope = (value31-value30)/(par20[index2+1]-par20[index2])
 		if p == 1:
 			value20 = (par2-par20[index2])*slope+value30
-		if p == 2:
+		else:
 			value21 = (par2-par20[index2])*slope+value30
 	# over par1
-	slope = (value21-value20)/dpar1
+	slope = (value21-value20)/(par10[index1+1]-par10[index1])
 	value = (par1-par10[index1])*slope+value20
 	return value
 
 
 
-def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=False):
+def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=False,log_input=True,log_output=True):
 
 
-
-    #with open(picklename,"rb") as f:
-    #    obj_list = pickle.load(f)
+	# log_input/log_output:
+	#	- True: input is in log scale (except metallicity)/output data are interpolated in log space
+	#	- False: input is in linear scale/output data are interpolated in linear space
     
-    data = np.load(npzname)
-    column_density = data['column_density']
-    metalgrid = data['metalgrid']
-    nhgrid = data['nhgrid']
-    sfrgrid = data['sfrgrid']
+	data = np.load(npzname)
+	column_density = data['column_density']
+	metalgrid = data['metalgrid']
+	nhgrid = data['nhgrid']
+	sfrgrid = data['sfrgrid']
 
-    if intensity == False:
-        CO_lines_array = data['CO_lines_array']
-        CI_lines_array = data['CI_lines_array']
-        CII_lines_array = data['CII_lines_array']
-    else:
-        CO_lines_array = data['CO_intTB_array']
-        CI_lines_array = data['CI_intTB_array']
-        CII_lines_array = data['CII_intTB_array']
+	if intensity == False:
+		CO_lines_array = data['CO_lines_array']
+		CI_lines_array = data['CI_lines_array']
+		CII_lines_array = data['CII_lines_array']
+	else:
+		CO_lines_array = data['CO_intTB_array']
+		CI_lines_array = data['CI_intTB_array']
+		CII_lines_array = data['CII_intTB_array']
 	
-    HI_abu_array = data['HI_abu_array']
-    H2_abu_array = data['H2_abu_array']
+	HI_abu_array = data['HI_abu_array']
+	H2_abu_array = data['H2_abu_array']
 
 
     #mask out infs and nans
-    CO_lines_array = np.nan_to_num(CO_lines_array)
-    CI_lines_array = np.nan_to_num(CI_lines_array)
-    CII_lines_array = np.nan_to_num(CII_lines_array)
-    H2_abu_array = np.nan_to_num(H2_abu_array)
-    HI_abu_array = np.nan_to_num(HI_abu_array)
+	CO_lines_array = np.nan_to_num(CO_lines_array)
+	CI_lines_array = np.nan_to_num(CI_lines_array)
+	CII_lines_array = np.nan_to_num(CII_lines_array)
+	H2_abu_array = np.nan_to_num(H2_abu_array)
+	HI_abu_array = np.nan_to_num(HI_abu_array)
 
     #floor and ceiling all the sph particle points
-    w_column_min = np.where(column_points < np.min(column_density))[0]
-    w_column_max = np.where(column_points > np.max(column_density))[0]
-    w_metal_min = np.where(metal_points < np.min(metalgrid))[0]
-    w_metal_max = np.where(metal_points > np.max(metalgrid))[0]
-    w_nh_min = np.where(nh_points < np.min(nhgrid))[0]
-    w_nh_max = np.where(nh_points > np.max(nhgrid))[0]
-    w_sfr_min = np.where(sfr_points < np.min(sfrgrid))[0]
-    w_sfr_max = np.where(sfr_points > np.max(sfrgrid))[0]
+	w_column_min = np.where(column_points < np.min(column_density))[0]
+	w_column_max = np.where(column_points > np.max(column_density))[0]
+	w_metal_min = np.where(metal_points < np.min(metalgrid))[0]
+	w_metal_max = np.where(metal_points > np.max(metalgrid))[0]
+	w_nh_min = np.where(nh_points < np.min(nhgrid))[0]
+	w_nh_max = np.where(nh_points > np.max(nhgrid))[0]
+	w_sfr_min = np.where(sfr_points < np.min(sfrgrid))[0]
+	w_sfr_max = np.where(sfr_points > np.max(sfrgrid))[0]
 
-    if len(w_column_min) > 0: column_points[w_column_min] = np.min(column_density)*1.1
-    if len(w_column_max) > 0: column_points[w_column_max] = np.max(column_density)*0.9
-    if len(w_metal_min) > 0: metal_points[w_metal_min] = np.min(metalgrid)*1.1
-    if len(w_metal_max) > 0: metal_points[w_metal_max] = np.max(metalgrid)*0.9
-    if len(w_nh_min) > 0: nh_points[w_nh_min] = np.min(nhgrid)*1.1
-    if len(w_nh_max) > 0: nh_points[w_nh_max] = np.max(nhgrid)*0.9
-    if len(w_sfr_min) > 0: sfr_points[w_sfr_min] = np.min(sfrgrid)*1.1
-    if len(w_sfr_max) > 0: sfr_points[w_sfr_max] = np.max(sfrgrid)*0.9
+	if len(w_column_min) > 0: column_points[w_column_min] = np.min(column_density)*1.1
+	if len(w_column_max) > 0: column_points[w_column_max] = np.max(column_density)*0.9
+	if len(w_metal_min) > 0: metal_points[w_metal_min] = np.min(metalgrid)*1.1
+	if len(w_metal_max) > 0: metal_points[w_metal_max] = np.max(metalgrid)*0.9
+	if len(w_nh_min) > 0: nh_points[w_nh_min] = np.min(nhgrid)*1.1
+	if len(w_nh_max) > 0: nh_points[w_nh_max] = np.max(nhgrid)*0.9
+	if len(w_sfr_min) > 0: sfr_points[w_sfr_min] = np.min(sfrgrid)*1.1
+	if len(w_sfr_max) > 0: sfr_points[w_sfr_max] = np.max(sfrgrid)*0.9
                                                                 
-    interpolated_co_lines_array = np.zeros([len(column_points),10])
-    interpolated_ci_lines_array = np.zeros([len(column_points),2])
-    interpolated_cii_lines_array = np.zeros([len(column_points)])
-    interpolated_h2_abu_array = np.zeros([len(column_points)])
-    interpolated_hi_abu_array = np.zeros([len(column_points)])
-        
-    point = (metal_points,np.log10(column_points),np.log10(nh_points),np.log10(sfr_points))
-    coords = (metalgrid,np.log10(column_density),np.log10(nhgrid),np.log10(sfrgrid))
+	interpolated_co_lines_array = np.zeros([len(column_points),10])
+	interpolated_ci_lines_array = np.zeros([len(column_points),2])
+	interpolated_cii_lines_array = np.zeros([len(column_points)])
+	interpolated_h2_abu_array = np.zeros([len(column_points)])
+	interpolated_hi_abu_array = np.zeros([len(column_points)])
+    
+	
+	if log_input == True:
+		point = (metal_points,np.log10(column_points),np.log10(nh_points),np.log10(sfr_points))
+		coords = (metalgrid,np.log10(column_density),np.log10(nhgrid),np.log10(sfrgrid))
+	else:
+		point = (metal_points,column_points,nh_points,sfr_points)
+		coords = (metalgrid,column_density,nhgrid,sfrgrid)
 
-    interpolated_co_lines_array = np.array([interpolator_qlinear(coords,CO_lines_array[:,:,:,:,r],point) for r in range(10)])
-    interpolated_ci_lines_array = np.array([interpolator_qlinear(coords,CI_lines_array[:,:,:,:,r],point) for r in range(2)])
-    interpolated_cii_lines_array = interpolator_qlinear(coords,CII_lines_array,point)
-    interpolated_h2_abu_array = interpolator_qlinear(coords,H2_abu_array,point)
-    interpolated_hi_abu_array = interpolator_qlinear(coords,HI_abu_array,point)
+	if log_output == True:
+		interpolated_co_lines_array = 10**np.array([interpolator_qlinear(coords,np.log10(CO_lines_array[:,:,:,:,r]),point) for r in range(10)])
+		interpolated_ci_lines_array = 10**np.array([interpolator_qlinear(coords,np.log10(CI_lines_array[:,:,:,:,r]),point) for r in range(2)])
+		interpolated_cii_lines_array = 10**interpolator_qlinear(coords,np.log10(CII_lines_array),point)
+		interpolated_h2_abu_array = 10**interpolator_qlinear(coords,np.log10(H2_abu_array),point)
+		interpolated_hi_abu_array = 10**interpolator_qlinear(coords,np.log10(HI_abu_array),point)
+	else:
+		interpolated_co_lines_array = np.array([interpolator_qlinear(coords,CO_lines_array[:,:,:,:,r],point) for r in range(10)])
+		interpolated_ci_lines_array = np.array([interpolator_qlinear(coords,CI_lines_array[:,:,:,:,r],point) for r in range(2)])
+		interpolated_cii_lines_array = interpolator_qlinear(coords,CII_lines_array,point)
+		interpolated_h2_abu_array = interpolator_qlinear(coords,H2_abu_array,point)
+		interpolated_hi_abu_array = interpolator_qlinear(coords,HI_abu_array,point)
 
-    return interpolated_co_lines_array,interpolated_ci_lines_array,interpolated_cii_lines_array,interpolated_h2_abu_array,interpolated_hi_abu_array
+	return interpolated_co_lines_array,interpolated_ci_lines_array,interpolated_cii_lines_array,2.0*interpolated_h2_abu_array,interpolated_hi_abu_array
