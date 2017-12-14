@@ -125,7 +125,7 @@ def interpolator_qlinear(coords, data, point):
 def get_co(npzname,redshift_points,column_points,metal_points,nh_points,sfr_points,intensity=False,log_input=False,log_output=False):
 
 	# input: npzname is a lookup table, containing grid data (e.g. CO intensity) as a function of grid coordinates (metal,nH,sfr,colDen)
-	# input: column_points,metal_points,nh_points,sfr_points must be on linear scale!
+	# input: redshift,column_points,metal_points,nh_points,sfr_points must be on linear scale!
 	# output: 
 
 	# log_input/log_output:
