@@ -50,7 +50,7 @@ def interpolator(coords, data, point) :
 
 
 def interpolator_qlinear(coords, data, point):
-# vectorized 4-D quadrilinear interpolation over structured grid
+# vectorized 5-D quntilinear interpolation over structured grid
 	
 	# load the structured grid
 	par1 = point[0]
@@ -61,6 +61,8 @@ def interpolator_qlinear(coords, data, point):
 	par30 = coords[2]
 	par4 = point[3]
 	par40 = coords[3]
+	par5 = point[4]
+	par50 = coords[4]
 	
 	varshape = par1.shape
 	value21 = np.zeros(varshape)
@@ -69,27 +71,38 @@ def interpolator_qlinear(coords, data, point):
 	value30 = np.zeros(varshape)
 	value41 = np.zeros(varshape)
 	value40 = np.zeros(varshape)
+	value51 = np.zeros(varshape)
+	value50 = np.zeros(varshape)
 
 	# locate points 
 	index_par1max = len(par10)-2
 	index_par2max = len(par20)-2
 	index_par3max = len(par30)-2
 	index_par4max = len(par40)-2
+	index_par5max = len(par50)-2
 	index1 = np.fmin(index_par1max,np.fmax(0,np.digitize(par1,par10)-1))
 	index2 = np.fmin(index_par2max,np.fmax(0,np.digitize(par2,par20)-1))
 	index3 = np.fmin(index_par3max,np.fmax(0,np.digitize(par3,par30)-1))
 	index4 = np.fmin(index_par4max,np.fmax(0,np.digitize(par4,par40)-1))
+	index5 = np.fmin(index_par5max,np.fmax(0,np.digitize(par5,par50)-1))
 	
 	#interpolation 
 	for p in [1,2]:
 		for q in [1,2]:
 			for w in [1,2]:
+				for v in [1,2]:
+					# over par5
+					slope = (data[p+index1-1,q+index2-1,w+index3-1,v+index4-1,index5+1]-data[p+index1-1,q+index2-1,w+index3-1,v+index4-1,index5])/(par50[index5+1]-par50[index5])
+					if v == 1:
+						value50 = (par5-par50[index5])*slope+data[p+index1-1,q+index2-1,w+index3-1,v+index4-1,index5]
+					else:
+						value51 = (par5-par50[index5])*slope+data[p+index1-1,q+index2-1,w+index3-1,v+index4-1,index5]
 				# over par4
-				slope = (data[p+index1-1,q+index2-1,w+index3-1,index4+1]-data[p+index1-1,q+index2-1,w+index3-1,index4])/(par40[index4+1]-par40[index4])
+				slope = (value51-value50)/(par40[index4+1]-par40[index4])
 				if w == 1:
-					value40 = (par4-par40[index4])*slope+data[p+index1-1,q+index2-1,w+index3-1,index4]
+					value40 = (par4-par40[index4])*slope+value50
 				else:
-					value41 = (par4-par40[index4])*slope+data[p+index1-1,q+index2-1,w+index3-1,index4]
+					value41 = (par4-par40[index4])*slope+value51
 			# over par3
 			slope = (value41-value40)/(par30[index3+1]-par30[index3])
 			if q == 1:
@@ -109,7 +122,7 @@ def interpolator_qlinear(coords, data, point):
 
 
 
-def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=False,log_input=False,log_output=False):
+def get_co(npzname,redshift_points,column_points,metal_points,nh_points,sfr_points,intensity=False,log_input=False,log_output=False):
 
 	# input: npzname is a lookup table, containing grid data (e.g. CO intensity) as a function of grid coordinates (metal,nH,sfr,colDen)
 	# input: column_points,metal_points,nh_points,sfr_points must be on linear scale!
@@ -121,6 +134,7 @@ def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=Fal
     
 	data = np.load(npzname)
 	column_density = data['column_density']
+	redshift = data['redshift']
 	metalgrid = data['metalgrid']
 	nhgrid = data['nhgrid']
 	sfrgrid = data['sfrgrid']
@@ -146,6 +160,8 @@ def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=Fal
 	HI_abu_array = np.nan_to_num(HI_abu_array)
 
     #floor and ceiling all the sph particle points
+	w_redshift_min = np.where(redshift_points < np.min(redshift))[0]
+	w_redshift_max = np.where(redshift_points > np.max(redshift))[0]
 	w_column_min = np.where(column_points < np.min(column_density))[0]
 	w_column_max = np.where(column_points > np.max(column_density))[0]
 	w_metal_min = np.where(metal_points < np.min(metalgrid))[0]
@@ -155,6 +171,8 @@ def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=Fal
 	w_sfr_min = np.where(sfr_points < np.min(sfrgrid))[0]
 	w_sfr_max = np.where(sfr_points > np.max(sfrgrid))[0]
 
+	if len(w_redshift_min) > 0: redshift_points[w_redshift_min] = np.min(redshift)*1.1
+	if len(w_redshift_max) > 0: redshift_points[w_redshift_max] = np.max(redshift)*0.9
 	if len(w_column_min) > 0: column_points[w_column_min] = np.min(column_density)*1.1
 	if len(w_column_max) > 0: column_points[w_column_max] = np.max(column_density)*0.9
 	if len(w_metal_min) > 0: metal_points[w_metal_min] = np.min(metalgrid)*1.1
@@ -172,11 +190,11 @@ def get_co(npzname,column_points,metal_points,nh_points,sfr_points,intensity=Fal
     
 	
 	if log_input == True:
-		point = (metal_points,np.log10(column_points),np.log10(nh_points),np.log10(sfr_points))
-		coords = (metalgrid,np.log10(column_density),np.log10(nhgrid),np.log10(sfrgrid))
+		point = (redshift_points,metal_points,np.log10(column_points),np.log10(nh_points),np.log10(sfr_points))
+		coords = (redshift,metalgrid,np.log10(column_density),np.log10(nhgrid),np.log10(sfrgrid))
 	else:
-		point = (metal_points,column_points,nh_points,sfr_points)
-		coords = (metalgrid,column_density,nhgrid,sfrgrid)
+		point = (redshift_points,metal_points,column_points,nh_points,sfr_points)
+		coords = (redshift,metalgrid,column_density,nhgrid,sfrgrid)
 
 	if log_output == True:
 		interpolated_co_lines_array = 10**np.array([interpolator_qlinear(coords,np.log10(CO_lines_array[:,:,:,:,r]),point) for r in range(10)])
