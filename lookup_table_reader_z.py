@@ -124,9 +124,12 @@ def interpolator_qlinear(coords, data, point):
 
 def get_co(npzname,redshift_points,column_points,metal_points,nh_points,sfr_points,intensity=False,log_input=False,log_output=False):
 
-	# input: npzname is a lookup table, containing grid data (e.g. CO intensity) as a function of grid coordinates (metal,nH,sfr,colDen)
-	# input: redshift,column_points,metal_points,nh_points,sfr_points must be on linear scale!
+	# input: 
+	# npzname: [char] name of tje lookup table, containing grid data (e.g. CO intensity) as a function of grid coordinates (metal,nH,sfr,colDen)
+	# redshift,column_points,metal_points,nh_points,sfr_points: [ndarray] must be on linear scale!
+	#
 	# output: 
+	# CO, CI, CII line intensity, H2, H abundance [ndarray]
 
 	# log_input/log_output:
 	#	- False: input grid coordinates remain on linear scale/grid data remain on linear scale
@@ -197,14 +200,14 @@ def get_co(npzname,redshift_points,column_points,metal_points,nh_points,sfr_poin
 		coords = (redshift,metalgrid,column_density,nhgrid,sfrgrid)
 
 	if log_output == True:
-		interpolated_co_lines_array = 10**np.array([interpolator_qlinear(coords,np.log10(CO_lines_array[:,:,:,:,r]),point) for r in range(10)])
-		interpolated_ci_lines_array = 10**np.array([interpolator_qlinear(coords,np.log10(CI_lines_array[:,:,:,:,r]),point) for r in range(2)])
+		interpolated_co_lines_array = 10**np.array([interpolator_qlinear(coords,np.log10(CO_lines_array[:,:,:,:,:,r]),point) for r in range(10)])
+		interpolated_ci_lines_array = 10**np.array([interpolator_qlinear(coords,np.log10(CI_lines_array[:,:,:,:,:,r]),point) for r in range(2)])
 		interpolated_cii_lines_array = 10**interpolator_qlinear(coords,np.log10(CII_lines_array),point)
 		interpolated_h2_abu_array = 10**interpolator_qlinear(coords,np.log10(H2_abu_array),point)
 		interpolated_hi_abu_array = 10**interpolator_qlinear(coords,np.log10(HI_abu_array),point)
 	else:
-		interpolated_co_lines_array = np.array([interpolator_qlinear(coords,CO_lines_array[:,:,:,:,r],point) for r in range(10)])
-		interpolated_ci_lines_array = np.array([interpolator_qlinear(coords,CI_lines_array[:,:,:,:,r],point) for r in range(2)])
+		interpolated_co_lines_array = np.array([interpolator_qlinear(coords,CO_lines_array[:,:,:,:,:,r],point) for r in range(10)])
+		interpolated_ci_lines_array = np.array([interpolator_qlinear(coords,CI_lines_array[:,:,:,:,:,r],point) for r in range(2)])
 		interpolated_cii_lines_array = interpolator_qlinear(coords,CII_lines_array,point)
 		interpolated_h2_abu_array = interpolator_qlinear(coords,H2_abu_array,point)
 		interpolated_hi_abu_array = interpolator_qlinear(coords,HI_abu_array,point)
