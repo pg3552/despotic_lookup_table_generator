@@ -82,7 +82,7 @@ ncolumns = len(column_density)
 nmetals = len(metalgrid)
 ndens = len(nhgrid)
 nsfr = len(sfrgrid)
-nreds = len(sfrgrid)
+nreds = len(zgrid)
 
 obj_list = MultiDimList((nreds,nmetals,ncolumns,ndens,nsfr))
 CO_lines_list = MultiDimList((nreds,nmetals,ncolumns,ndens,nsfr,10))
