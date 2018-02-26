@@ -102,7 +102,7 @@ def interpolator_qlinear(coords, data, point):
 				if w == 1:
 					value40 = (par4-par40[index4])*slope+value50
 				else:
-					value41 = (par4-par40[index4])*slope+value51
+					value41 = (par4-par40[index4])*slope+value50
 			# over par3
 			slope = (value41-value40)/(par30[index3+1]-par30[index3])
 			if q == 1:
