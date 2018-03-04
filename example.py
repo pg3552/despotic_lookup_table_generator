@@ -12,13 +12,6 @@ from lookup_table_reader_z_original import get_co
 
 lookup_npzfilename = "./high_res_abu_z-original.npz"
 
-redshift_points = np.asarray([0., 1., 1.])
-column_points = np.asarray([25, 50, 100])  # Msun/pc^2
-nh_points = np.asarray([50, 100, 1000])  # cm^-3
-sfr_points = np.asarray([1, 10, 20])  # msun/yr
-metal_points = np.asarray([1, 1, 1])  # units of solar
-
-
 # -- updated method ---------------------------------------------------------
 table = TableReader(lookup_npzfilename)
 
@@ -33,6 +26,13 @@ table.copyPoints = True  # copy array and update these values
 
 # -- comparision of new method to old ----------------------------------------
 for i, li, lo in itertools.product([True, False], repeat=3):
+
+    # get_co updates the input arrays (if bounds exceeded)
+    redshift_points = np.asarray([0., 1., 1.])
+    column_points = np.asarray([25, 50, 100])  # Msun/pc^2
+    nh_points = np.asarray([50, 100, 1000])  # cm^-3
+    sfr_points = np.asarray([1, 10, 20])  # msun/yr
+    metal_points = np.asarray([1, 1, 1])  # units of solar
 
     # -- new method --
     output_new = table.getValues(
