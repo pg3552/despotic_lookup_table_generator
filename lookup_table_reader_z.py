@@ -7,6 +7,13 @@ import warnings
 from six.moves import range
 
 
+class OutsideLimitsWarning(Warning):
+    pass
+
+
+warnings.simplefilter('always', OutsideLimitsWarning)
+
+
 class TableReader(object):
 
     def __init__(self, table_file):
@@ -175,10 +182,10 @@ class TableReader(object):
                 raise ValueError(message)
 
             elif self.limitsMode.Method == 'leave':
-                warnings.warn(message)
+                warnings.warn(message, OutsideLimitsWarning)
 
             else:
-                warnings.warn(message)
+                warnings.warn(message, OutsideLimitsWarning)
 
                 if self.copyPoints:
                     # to avoid updating original input values
