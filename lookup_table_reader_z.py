@@ -130,7 +130,7 @@ class TableReader(object):
             method = value
             fill = None
 
-        value = value.lower()
+        method = method.lower()
 
         self.__limitsMode = namedtuple(
                 'Limit', ['Method', 'Fill']
