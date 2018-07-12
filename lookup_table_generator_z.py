@@ -9,6 +9,7 @@ import itertools
 import numpy as np
 
 import despotic
+import copy
 
 ########################################################################
 # User-settable options
@@ -45,13 +46,20 @@ nreds = zgrid.size
 CO_lines_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 10))
 CI_lines_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 2))
 CII_lines_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
+OI_lines_array = np.zeros([nmetals,ncolumns,ndens,nsfr,2])
+
 H2_abu_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
 HI_abu_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
+CO_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
+CI_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
+CII_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
 
 CO_intTB_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 10))
 CI_intTB_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 2))
 CII_intTB_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
+OI_intTB_array = np.zeros([nmetals,ncolumns,ndens,nsfr,2])
 
+Tg_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
 
 # Convert the column densities to CGS
 mu = 2.33
@@ -161,12 +169,17 @@ for (nm, nc, nd, nsf, nrs) in itertools.product(
     # simultaneously solves for radiative transfer, chemistry and
     # temperature all at once.
 
-    gmc.setChemEq(
+    try:
+		gmc.setChemEq(
             network=despotic.chemistry.NL99_GC,
             evolveTemp='iterate',
             verbose=True
             )
-    gmc.lineLum('co')[0]['lumPerH']
+		gmc.lineLum('co')[0]['lumPerH']
+    except (despotic.despoticError,ValueError,np.linalg.linalg.LinAlgError,IndexError):
+		gmc = copy.deepcopy(gmc_old)
+
+    gmc_old = copy.deepcopy(gmc)
 
     # Calculate the CO and C+ lines
     CO_lines_array[nrs, nm, nc, nd, nsf, :] = np.array([
@@ -176,6 +189,9 @@ for (nm, nc, nd, nsf, nrs) in itertools.product(
             gmc.lineLum('c')[r]['lumPerH'] for r in range(2)
             ])
     CII_lines_array[nrs, nm, nc, nd, nsf] = gmc.lineLum('c+')[0]['lumPerH']
+    OI_lines_array[nrs, nm, nc, nd, nsf, :] = np.array([
+            gmc.lineLum('o')[r]['lumPerH'] for r in range(2)
+            ])
 
     CO_intTB_array[nrs, nm, nc, nd, nsf, :] = np.array([
             gmc.lineLum('co')[r]['intTB'] for r in range(10)
@@ -184,6 +200,9 @@ for (nm, nc, nd, nsf, nrs) in itertools.product(
             gmc.lineLum('c')[r]['intTB'] for r in range(2)
             ])
     CII_intTB_array[nrs, nm, nc, nd, nsf] = gmc.lineLum('c+')[0]['intTB']
+    OI_intTB_array[nrs, nm, nc, nd, nsf, :] = np.array([
+            gmc.lineLum('o')[r]['intTB'] for r in range(2)
+            ])
 
     H2_abu_array[nrs, nm, nc, nd, nsf] = np.average(
             np.array([
@@ -197,6 +216,26 @@ for (nm, nc, nd, nsf, nrs) in itertools.product(
                 ]),
             weights=gmc.mass()
             )
+    CO_abu_array[nrs, nm, nc, nd, nsf] = np.average(
+            np.array([
+				gmc.emitters[n]["co"].abundance for n in range(NZONES)
+                ]),
+            weights=gmc.mass()
+            )
+    CI_abu_array[nrs, nm, nc, nd, nsf] = np.average(
+            np.array([
+				gmc.emitters[n]["c"].abundance for n in range(NZONES)
+                ]),
+            weights=gmc.mass()
+            )
+    CII_abu_array[nrs, nm, nc, nd, nsf] = np.average(
+            np.array([
+				gmc.emitters[n]["c+"].abundance for n in range(NZONES)
+                ]),
+            weights=gmc.mass()
+            )
+
+    Tg_array[nm,nc,nd,nsf,:] = np.average(gmc.Tg, weights=gmc.mass())
 
 np.savez(
         'high_res_z.npz',
@@ -212,5 +251,9 @@ np.savez(
         CI_intTB_array=CI_intTB_array,
         CII_intTB_array=CII_intTB_array,
         H2_abu_array=H2_abu_array,
-        HI_abu_array=HI_abu_array
+        HI_abu_array=HI_abu_array,
+        CO_abu_array=CO_abu_array,
+        CI_abu_array=CI_abu_array,
+        CII_abu_array=CII_abu_array,
+		Tg_array=Tg_array
         )
