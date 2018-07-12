@@ -269,6 +269,9 @@ class TableReader(object):
 
         data_arrays["h2"] = self.data['H2_abu_array']
         data_arrays["hi"] = self.data['HI_abu_array']
+        data_arrays["co_abu"] = self.data['CO_abu_array']
+        data_arrays["ci_abu"] = self.data['CI_abu_array']
+        data_arrays["cii_abu"] = self.data['CII_abu_array']
 
         if log_output:
             # Suppress: RuntimeWarning: invalid value encountered in log10
@@ -317,6 +320,15 @@ class TableReader(object):
                 )
         output["hi"] = self._interpolatorQLinear(
                 coords, data_arrays["hi"], point
+                )
+        output["co_abu"] = self._interpolatorQLinear(
+                coords, data_arrays["co_abu"], point
+                )
+        output["ci_abu"] = self._interpolatorQLinear(
+                coords, data_arrays["ci_abu"], point
+                )
+        output["cii_abu"] = self._interpolatorQLinear(
+                coords, data_arrays["cii_abu"], point
                 )
 
         if log_output:
