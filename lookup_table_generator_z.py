@@ -46,20 +46,26 @@ nreds = zgrid.size
 CO_lines_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 10))
 CI_lines_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 2))
 CII_lines_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
-OI_lines_array = np.zeros([nmetals,ncolumns,ndens,nsfr,2])
+OI_lines_array = np.zeros([nreds,nmetals,ncolumns,ndens,nsfr,2])
 
 H2_abu_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
 HI_abu_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
-CO_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
-CI_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
-CII_abu_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
+CO_abu_array = np.zeros([nreds,nmetals,ncolumns,ndens,nsfr])
+CI_abu_array = np.zeros([nreds,nmetals,ncolumns,ndens,nsfr])
+CII_abu_array = np.zeros([nreds,nmetals,ncolumns,ndens,nsfr])
 
 CO_intTB_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 10))
 CI_intTB_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 2))
 CII_intTB_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
-OI_intTB_array = np.zeros([nmetals,ncolumns,ndens,nsfr,2])
+OI_intTB_array = np.zeros([nreds,nmetals,ncolumns,ndens,nsfr,2])
 
-Tg_array = np.zeros([nmetals,ncolumns,ndens,nsfr])
+CO_intIntensity_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 10))
+CI_intIntensity_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr, 2))
+CII_intIntensity_array = np.zeros((nreds, nmetals, ncolumns, ndens, nsfr))
+OI_intIntensity_array = np.zeros([nreds,nmetals,ncolumns,ndens,nsfr,2])
+
+
+Tg_array = np.zeros([nreds,nmetals,ncolumns,ndens,nsfr])
 
 # Convert the column densities to CGS
 mu = 2.33
@@ -170,14 +176,14 @@ for (nm, nc, nd, nsf, nrs) in itertools.product(
     # temperature all at once.
 
     try:
-		gmc.setChemEq(
+        gmc.setChemEq(
             network=despotic.chemistry.NL99_GC,
             evolveTemp='iterate',
             verbose=True
-            )
-		gmc.lineLum('co')[0]['lumPerH']
+        )
+        gmc.lineLum('co')[0]['lumPerH']
     except (despotic.despoticError,ValueError,np.linalg.linalg.LinAlgError,IndexError):
-		gmc = copy.deepcopy(gmc_old)
+        gmc = copy.deepcopy(gmc_old)
 
     gmc_old = copy.deepcopy(gmc)
 
@@ -203,6 +209,20 @@ for (nm, nc, nd, nsf, nrs) in itertools.product(
     OI_intTB_array[nrs, nm, nc, nd, nsf, :] = np.array([
             gmc.lineLum('o')[r]['intTB'] for r in range(2)
             ])
+
+
+
+    CO_intIntensity_array[nrs, nm, nc, nd, nsf, :] = np.array([
+        gmc.lineLum('co')[r]['intIntensity'] for r in range(10)
+    ])
+    CI_intIntensity_array[nrs, nm, nc, nd, nsf, :] = np.array([
+        gmc.lineLum('c')[r]['intIntensity'] for r in range(2)
+    ])
+    CII_intIntensity_array[nrs, nm, nc, nd, nsf] = gmc.lineLum('c+')[0]['intIntensity']
+    OI_intIntensity_array[nrs, nm, nc, nd, nsf, :] = np.array([
+            gmc.lineLum('o')[r]['intIntensity'] for r in range(2)
+            ])
+
 
     H2_abu_array[nrs, nm, nc, nd, nsf] = np.average(
             np.array([
@@ -235,25 +255,28 @@ for (nm, nc, nd, nsf, nrs) in itertools.product(
             weights=gmc.mass()
             )
 
-    Tg_array[nm,nc,nd,nsf,:] = np.average(gmc.Tg, weights=gmc.mass())
+    Tg_array[nrs,nm,nc,nd,nsf] = np.average(gmc.Tg, weights=gmc.mass())
 
 np.savez(
-        'high_res_z.npz',
-        redshift=zgrid,
-        column_density=column_density.value,
-        metalgrid=metalgrid,
-        nhgrid=nhgrid,
-        sfrgrid=sfrgrid,
-        CO_lines_array=CO_lines_array,
-        CI_lines_array=CI_lines_array,
-        CII_lines_array=CII_lines_array,
-        CO_intTB_array=CO_intTB_array,
-        CI_intTB_array=CI_intTB_array,
-        CII_intTB_array=CII_intTB_array,
-        H2_abu_array=H2_abu_array,
-        HI_abu_array=HI_abu_array,
-        CO_abu_array=CO_abu_array,
-        CI_abu_array=CI_abu_array,
-        CII_abu_array=CII_abu_array,
-		Tg_array=Tg_array
-        )
+    'testintIntensity.npz',
+    redshift=zgrid,
+    column_density=column_density.value,
+    metalgrid=metalgrid,
+    nhgrid=nhgrid,
+    sfrgrid=sfrgrid,
+    CO_lines_array=CO_lines_array,
+    CI_lines_array=CI_lines_array,
+    CII_lines_array=CII_lines_array,
+    CO_intTB_array=CO_intTB_array,
+    CI_intTB_array=CI_intTB_array,
+    CII_intTB_array=CII_intTB_array,
+    CO_intIntensity_array=CO_intIntensity_array,
+    CI_intIntensity_array=CI_intIntensity_array,
+    CII_intIntensity_array=CII_intItensity_array,
+    H2_abu_array=H2_abu_array,
+    HI_abu_array=HI_abu_array,
+    CO_abu_array=CO_abu_array,
+    CI_abu_array=CI_abu_array,
+    CII_abu_array=CII_abu_array,
+    Tg_array=Tg_array
+)
