@@ -17,19 +17,19 @@ import copy
 
 
 # Set the column density for 3 clouds that we'll study: units are Msun/pc^2
-column_density = np.logspace(0., 3., 10) * (units.Msun / (units.pc**2.))
+column_density = np.logspace(0., 4., 20) * (units.Msun / (units.pc**2.))
 
 # Set number of radial zones in each cloud
-NZONES = 4
+NZONES = 16
 
 # Set up the metallicities
-metalgrid = np.linspace(1.5, 0.1, 3)
+metalgrid = np.linspace(1.5, 0.1, 6)
 
 # Set the nH grid
-nhgrid = np.logspace(0.1, 3., 10)
+nhgrid = np.logspace(0, 5., 20)
 
 # Set the SFR grid
-sfrgrid = np.logspace(0., 3., 10)
+sfrgrid = np.logspace(0., 3., 20)
 
 # Set the redshift grid
 zgrid = np.linspace(0., 5., 11)
